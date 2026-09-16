@@ -1,0 +1,16 @@
+{
+  "name":"SpendNote - Personal Expense Tracker",
+  "short_name":"SpendNote",
+  "start_url":"./index.html",
+  "display":"standalone",
+  "background_color":"#f5f6f8",
+  "theme_color":"#111111",
+  "description":"Personal local expense tracker with payment screenshot OCR.",
+  "share_target":{
+    "action":"./share",
+    "method":"POST",
+    "enctype":"multipart/form-data",
+    "params":{"files":[{"name":"receipt","accept":["image/*"]}]}
+  },
+  "icons":[]
+}

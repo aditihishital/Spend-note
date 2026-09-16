@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.json">
+<title>SpendNote V3</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--text:#111;--muted:#70757d;--line:#e5e7eb;--accent:#111}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.app{max-width:560px;margin:auto;padding:18px 16px 90px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.logo{font-size:24px;font-weight:800}.sub{font-size:12px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 3px 15px #00000006}
+.total{font-size:36px;font-weight:850;margin:5px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mini{background:#fafafa;border-radius:14px;padding:13px}.mini b{display:block;font-size:20px}.mini span{font-size:12px;color:var(--muted)}
+button,.filebtn{border:0;border-radius:13px;padding:13px 16px;font-weight:750;font-size:15px;cursor:pointer}
+.primary{background:#111;color:white;width:100%}.secondary{background:#f0f1f3;color:#111}.danger{background:#fff0f0;color:#c00}
+input,select,textarea{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;font-size:15px;background:#fff}label{font-size:12px;color:var(--muted);display:block;margin:12px 0 6px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;gap:8px;padding:10px 10px calc(10px + env(safe-area-inset-bottom));z-index:5}
+.nav button{background:transparent;padding:9px 14px}.nav .active{background:#111;color:#fff}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.merchant{font-weight:750}.muted{color:var(--muted);font-size:12px}
+.tx{padding:13px 0;border-bottom:1px solid var(--line)}.tx:last-child{border-bottom:0}.amt{font-weight:800}
+.drop{border:2px dashed #cfd3d8;border-radius:18px;padding:25px 15px;text-align:center;background:#fafafa}
+.preview{max-width:100%;max-height:280px;border-radius:14px;margin-top:14px;display:none}
+.hidden{display:none!important}.pill{display:inline-block;background:#e9f8f0;color:#087443;border-radius:20px;padding:5px 9px;font-size:11px;font-weight:800}
+.progress{height:8px;background:#eee;border-radius:10px;overflow:hidden;margin-top:12px}.bar{height:100%;width:0;background:#111;transition:.2s}
+.toast{position:fixed;left:16px;right:16px;bottom:78px;background:#111;color:#fff;padding:13px 15px;border-radius:12px;text-align:center;display:none;z-index:10}
+h2{margin:3px 0 15px;font-size:21px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div><div class="logo">SpendNote</div><div class="sub">Personal expense tracker • V3</div></div><span class="pill">LOCAL</span></div>
+
+  <section id="dashboard" class="page">
+    <div class="card">
+      <div class="sub">This month</div><div id="monthTotal" class="total">₹0</div>
+      <div class="grid"><div class="mini"><b id="todayTotal">₹0</b><span>Today</span></div><div class="mini"><b id="countTotal">0</b><span>Transactions</span></div></div>
+    </div>
+    <div class="card"><h2>Quick add</h2><button class="primary" onclick="showPage('add')">📷 Scan payment screenshot</button></div>
+    <div class="card"><div class="row"><h2 style="margin:0">Recent</h2><button class="secondary" onclick="showPage('transactions')">View all</button></div><div id="recent"></div></div>
+  </section>
+
+  <section id="add" class="page hidden">
+    <div class="card">
+      <h2>Scan payment</h2>
+      <div class="drop">
+        <div style="font-size:32px">📷</div><b>Upload GPay / PhonePe / CRED screenshot</b>
+        <div class="muted" style="margin:7px 0 14px">Amount, merchant, date and time will be detected.</div>
+        <input id="receipt" type="file" accept="image/*">
+        <img id="preview" class="preview">
+        <div class="progress"><div id="bar" class="bar"></div></div>
+        <div id="ocrStatus" class="muted" style="margin-top:8px">Ready</div>
+      </div>
+      <button id="scanBtn" class="primary" style="margin-top:14px" onclick="scanReceipt()">🔍 Scan screenshot</button>
+      <div id="formBox" class="hidden">
+        <label>Amount *</label><input id="amount" inputmode="decimal" placeholder="50">
+        <label>Merchant</label><input id="merchant" placeholder="Lite Cafe">
+        <label>Date</label><input id="date" type="date">
+        <label>Time</label><input id="time" type="time">
+        <label>Category</label>
+        <select id="category"><option>Food & Dining</option><option>Travel</option><option>Shopping</option><option>Bills</option><option>Fuel</option><option>Entertainment</option><option>Health</option><option>Other</option></select>
+        <label>Note</label><textarea id="note" rows="2" placeholder="Optional"></textarea>
+        <button class="primary" style="margin-top:14px" onclick="saveExpense()">✓ Confirm & Save Expense</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="transactions" class="page hidden">
+    <div class="card"><h2>Transactions</h2><input id="search" placeholder="Search merchant/category..." oninput="renderTransactions()"><div style="height:8px"></div><select id="filter" onchange="renderTransactions()"><option value="">All categories</option><option>Food & Dining</option><option>Travel</option><option>Shopping</option><option>Bills</option><option>Fuel</option><option>Entertainment</option><option>Health</option><option>Other</option></select><div id="allTx"></div></div>
+  </section>
+
+  <section id="settings" class="page hidden">
+    <div class="card"><h2>Backup & data</h2><p class="muted">Your expenses stay on this device/browser. Export a JSON backup regularly.</p><button class="primary" onclick="exportData()">Export backup</button><div style="height:8px"></div><input type="file" id="importFile" accept=".json" onchange="importData(event)"></div>
+    <div class="card"><h2>About V3</h2><p class="muted">OCR is designed to prioritize the payment amount and avoid mistaking UPI IDs, bank numbers or transaction IDs for the expense amount.</p></div>
+  </section>
+</div>
+
+<div class="nav">
+<button id="n-dashboard" class="active" onclick="showPage('dashboard')">Home</button>
+<button id="n-add" onclick="showPage('add')">Scan</button>
+<button id="n-transactions" onclick="showPage('transactions')">History</button>
+<button id="n-settings" onclick="showPage('settings')">Settings</button>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const KEY='spendnote_v3_expenses';
+let expenses=JSON.parse(localStorage.getItem(KEY)||'[]');
+let scannedFile=null;
+
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function toast(s){let t=document.getElementById('toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
+function save(){localStorage.setItem(KEY,JSON.stringify(expenses))}
+function showPage(p){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(p).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));document.getElementById('n-'+p).classList.add('active');if(p==='dashboard')renderDashboard();if(p==='transactions')renderTransactions()}
+function renderDashboard(){
+ const now=new Date(), ym=now.toISOString().slice(0,7), today=now.toISOString().slice(0,10);
+ const m=expenses.filter(x=>x.date?.startsWith(ym)).reduce((a,x)=>a+Number(x.amount),0);
+ const t=expenses.filter(x=>x.date===today).reduce((a,x)=>a+Number(x.amount),0);
+ document.getElementById('monthTotal').textContent=money(m);document.getElementById('todayTotal').textContent=money(t);document.getElementById('countTotal').textContent=expenses.length;
+ document.getElementById('recent').innerHTML=expenses.slice().sort((a,b)=>b.created-a.created).slice(0,6).map(txHTML).join('')||'<div class="muted">No expenses yet.</div>';
+}
+function txHTML(x){return `<div class="tx"><div class="row"><div><div class="merchant">${esc(x.merchant||'Unknown merchant')}</div><div class="muted">${esc(x.category)} • ${esc(x.date||'')} ${esc(x.time||'')}</div></div><div class="amt">${money(x.amount)}</div></div></div>`}
+function renderTransactions(){
+ const q=(document.getElementById('search').value||'').toLowerCase(), f=document.getElementById('filter').value;
+ let a=expenses.filter(x=>(!f||x.category===f)&&(!q||`${x.merchant} ${x.category} ${x.note}`.toLowerCase().includes(q))).sort((a,b)=>b.created-a.created);
+ document.getElementById('allTx').innerHTML=a.map(x=>txHTML(x)+`<div><button class="danger" onclick="delTx('${x.id}')">Delete</button></div>`).join('')||'<div class="muted" style="padding:15px 0">No matching transactions.</div>';
+}
+function delTx(id){if(confirm('Delete this expense?')){expenses=expenses.filter(x=>x.id!==id);save();renderTransactions();renderDashboard();}}
+document.getElementById('receipt').addEventListener('change',e=>{scannedFile=e.target.files[0];if(scannedFile){let u=URL.createObjectURL(scannedFile);let p=document.getElementById('preview');p.src=u;p.style.display='block';document.getElementById('ocrStatus').textContent='Screenshot selected. Tap Scan.'}});
+function parseAmount(text){
+ const lines=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+ const candidates=[];
+ const re=/(?:₹|rs\.?|inr)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)/ig;
+ let m;while((m=re.exec(text)))candidates.push(Number(m[1].replace(/,/g,'')));
+ const keywords=/\b(amount|paid|total|debited|sent|payment)\b/i;
+ for(const line of lines){if(keywords.test(line)){let r=line.match(/(?:₹|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)/i);if(r)candidates.unshift(Number(r[1].replace(/,/g,'')))}}
+ const valid=candidates.filter(n=>n>0&&n<1000000);
+ return valid.length?valid[0]:'';
+}
+function parseMerchant(text){
+ const lines=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+ const bad=/^(successful|success|paid|payment|upi|bank|account|check balance|pay again|amount|transaction|date|time|₹|rs\.?|inr)$/i;
+ for(const line of lines){
+   if(line.length>=3&&line.length<=50&&!bad.test(line)&&/[A-Za-z]/.test(line)&&!/\d{5,}/.test(line)){
+     if(/(lite cafe|cafe|restaurant|store|mart|petrol|fuel|shop|restaurant)/i.test(line)) return line;
+   }
+ }
+ return lines.find(x=>x.length>=3&&x.length<=40&&/[A-Za-z]/.test(x)&&!bad.test(x))||'';
+}
+function parseDateTime(text){
+ let d='',tm='';
+ let m=text.match(/\b(\d{1,2}):(\d{2})\s*(am|pm)\b/i);if(m){let h=+m[1],mi=m[2],ap=m[3].toLowerCase();if(ap==='pm'&&h<12)h+=12;if(ap==='am'&&h===12)h=0;tm=String(h).padStart(2,'0')+':'+mi}
+ let x=text.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*['’]?\s*(\d{2,4})/i);
+ if(x){let months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};let y=+x[3];if(y<100)y+=2000;d=`${y}-${String(months[x[2].slice(0,3).toLowerCase()]+1).padStart(2,'0')}-${String(+x[1]).padStart(2,'0')}`}
+ if(!d){let z=text.match(/\b(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})\b/);if(z){let y=+z[3];if(y<100)y+=2000;d=`${y}-${String(+z[2]).padStart(2,'0')}-${String(+z[1]).padStart(2,'0')}`}}
+ return {d,tm}
+}
+async function scanReceipt(){
+ if(!scannedFile){toast('Please select a screenshot first');return}
+ const btn=document.getElementById('scanBtn'),status=document.getElementById('ocrStatus'),bar=document.getElementById('bar');
+ btn.disabled=true;status.textContent='Loading OCR engine…';bar.style.width='10%';
+ try{
+   if(!window.Tesseract) throw new Error('OCR library could not load. Open this app over HTTPS.');
+   const result=await Tesseract.recognize(scannedFile,'eng',{logger:m=>{if(m.status==='recognizing text'){bar.style.width=Math.round(15+(m.progress||0)*75)+'%';status.textContent='Reading screenshot… '+Math.round((m.progress||0)*100)+'%'}}});
+   const text=result.data.text||'', amount=parseAmount(text), merchant=parseMerchant(text), dt=parseDateTime(text);
+   document.getElementById('amount').value=amount;
+   document.getElementById('merchant').value=merchant;
+   document.getElementById('date').value=dt.d||new Date().toISOString().slice(0,10);
+   document.getElementById('time').value=dt.tm;
+   document.getElementById('note').value='OCR scanned payment receipt';
+   document.getElementById('formBox').classList.remove('hidden');
+   bar.style.width='100%';status.textContent=amount?'Scan complete. Please confirm the detected details.':'Scan complete — amount not detected, please enter it.';
+ }catch(e){console.error(e);status.textContent='OCR failed: '+e.message;toast('OCR could not run. Use the HTTPS version of the app.')}
+ finally{btn.disabled=false}
+}
+function saveExpense(){
+ let amount=Number((document.getElementById('amount').value||'').replace(/,/g,''));if(!amount){toast('Amount required');return}
+ expenses.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),amount,merchant:document.getElementById('merchant').value||'Unknown merchant',date:document.getElementById('date').value||new Date().toISOString().slice(0,10),time:document.getElementById('time').value||'',category:document.getElementById('category').value,note:document.getElementById('note').value,created:Date.now()});
+ save();toast('Expense saved ✓');document.getElementById('receipt').value='';document.getElementById('preview').style.display='none';document.getElementById('formBox').classList.add('hidden');document.getElementById('bar').style.width='0';showPage('dashboard');
+}
+function exportData(){let blob=new Blob([JSON.stringify({app:'SpendNote',version:3,exported:new Date().toISOString(),expenses},null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='SpendNote-backup.json';a.click()}
+function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!Array.isArray(x.expenses))throw 0;expenses=x.expenses;save();renderDashboard();toast('Backup restored ✓')}catch{toast('Invalid backup file')}};r.readAsText(f)}
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.warn);
+renderDashboard();
+</script>
+</body>
+</html>
