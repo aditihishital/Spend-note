@@ -138,13 +138,33 @@ function parseDateTime(text){
  if(!d){let z=text.match(/\b(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})\b/);if(z){let y=+z[3];if(y<100)y+=2000;d=`${y}-${String(+z[2]).padStart(2,'0')}-${String(+z[1]).padStart(2,'0')}`}}
  return {d,tm}
 }
+function fileToCanvas(file){
+ return new Promise((resolve,reject)=>{
+   const url=URL.createObjectURL(file);
+   const img=new Image();
+   img.onload=()=>{
+     try{
+       const canvas=document.createElement('canvas');
+       canvas.width=img.naturalWidth||img.width;
+       canvas.height=img.naturalHeight||img.height;
+       canvas.getContext('2d').drawImage(img,0,0);
+       URL.revokeObjectURL(url);
+       resolve(canvas);
+     }catch(err){URL.revokeObjectURL(url);reject(err)}
+   };
+   img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Could not load the selected image. Try a different screenshot.'))};
+   img.src=url;
+ });
+}
 async function scanReceipt(){
  if(!scannedFile){toast('Please select a screenshot first');return}
  const btn=document.getElementById('scanBtn'),status=document.getElementById('ocrStatus'),bar=document.getElementById('bar');
  btn.disabled=true;status.textContent='Loading OCR engine…';bar.style.width='10%';
  try{
    if(!window.Tesseract) throw new Error('OCR library could not load. Open this app over HTTPS.');
-   const result=await Tesseract.recognize(scannedFile,'eng',{logger:m=>{if(m.status==='recognizing text'){bar.style.width=Math.round(15+(m.progress||0)*75)+'%';status.textContent='Reading screenshot… '+Math.round((m.progress||0)*100)+'%'}}});
+   status.textContent='Preparing image…';bar.style.width='12%';
+   const canvas=await fileToCanvas(scannedFile);
+   const result=await Tesseract.recognize(canvas,'eng',{logger:m=>{if(m.status==='recognizing text'){bar.style.width=Math.round(15+(m.progress||0)*75)+'%';status.textContent='Reading screenshot… '+Math.round((m.progress||0)*100)+'%'}}});
    const text=result.data.text||'', amount=parseAmount(text), merchant=parseMerchant(text), dt=parseDateTime(text);
    document.getElementById('amount').value=amount;
    document.getElementById('merchant').value=merchant;
