@@ -140,19 +140,16 @@ function parseDateTime(text){
 }
 function fileToCanvas(file){
  return new Promise((resolve,reject)=>{
-   const url=URL.createObjectURL(file);
    const img=new Image();
+   const url=URL.createObjectURL(file);
    img.onload=()=>{
-     try{
-       const canvas=document.createElement('canvas');
-       canvas.width=img.naturalWidth||img.width;
-       canvas.height=img.naturalHeight||img.height;
-       canvas.getContext('2d').drawImage(img,0,0);
-       URL.revokeObjectURL(url);
-       resolve(canvas);
-     }catch(err){URL.revokeObjectURL(url);reject(err)}
+     const canvas=document.createElement('canvas');
+     canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+     canvas.getContext('2d').drawImage(img,0,0);
+     URL.revokeObjectURL(url);
+     resolve(canvas);
    };
-   img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Could not load the selected image. Try a different screenshot.'))};
+   img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Could not decode the selected image.'))};
    img.src=url;
  });
 }
@@ -162,7 +159,6 @@ async function scanReceipt(){
  btn.disabled=true;status.textContent='Loading OCR engine…';bar.style.width='10%';
  try{
    if(!window.Tesseract) throw new Error('OCR library could not load. Open this app over HTTPS.');
-   status.textContent='Preparing image…';bar.style.width='12%';
    const canvas=await fileToCanvas(scannedFile);
    const result=await Tesseract.recognize(canvas,'eng',{logger:m=>{if(m.status==='recognizing text'){bar.style.width=Math.round(15+(m.progress||0)*75)+'%';status.textContent='Reading screenshot… '+Math.round((m.progress||0)*100)+'%'}}});
    const text=result.data.text||'', amount=parseAmount(text), merchant=parseMerchant(text), dt=parseDateTime(text);
